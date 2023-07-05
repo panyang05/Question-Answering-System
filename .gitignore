@@ -1,3 +1,6 @@
 .ipynb_checkpoints
 .chroma
 test.txt
+.DS_Store
+website/.DS_Store
+website/__pycache__/
