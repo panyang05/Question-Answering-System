@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Ask anything about your files</title>
+</head>
+
+<body>
+    <h1>Upload your file</h1>
+    <form action="/upload" method="post" enctype="multipart/form-data">
+        <label for="file">Choose a file to upload:</label>
+        <input type="file" name="file" id="file" required>
+        <br>
+        <input type="submit" value="Upload">
+    </form>
+
+    <ul>
+    {%for filename in files%}
+        <li>
+            {{filename}}
+            <form action="/delete/" method="post" enctype="multipart/form-data">
+                <input type="hidden" name="filename" value={{filename}}>
+                <button type="submit" value="Delete"> Delete</button>
+            </form>
+        </li>
+    {%endfor%}
+
+    </ul>
+
+    <h1>Ask your question</h1>
+    <form action="/submit" method="post">
+
+        <label for="key">Enter your openAI key:</label>
+        <input type="password" name="key" id="text" required>
+        <br>
+
+        <label for="question">Enter your question:</label>
+        <input type="text" name="question" id="text" required>
+        
+        <br>
+        <input type="submit" value="Submit">
+    </form>
+
+    <h1>Summerize your files</h1>
+    <form action="/summerize" method="post">
+    
+        <label for="key">Enter your openAI key:</label>
+        <input type="password" name="key" id="text" required>
+        <br>
+    
+        <input type="submit" value="Submit">
+    </form>
+    
+    {%if response%}
+        <p>response: {{response}}</p>
+    {%endif%}
+</body>
+
+</html>
