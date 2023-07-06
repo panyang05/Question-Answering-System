@@ -65,6 +65,8 @@ def summerization(openai_key):
             with open('static/upload/'+filename) as f:
                 text += f.read()
             text += "=====================\n\n"
+            text = CharacterTextSplitter().split_text(text)
+            pages = [Document(page_content=t) for t in text]
         elif extension == 'pdf':
             loader = PyPDFLoader('static/upload/'+filename)
             pages = loader.load_and_split()
