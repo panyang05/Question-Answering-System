@@ -54,6 +54,42 @@ def question_answer(openai_key, question):
 
     return res_text
 
+
+def long_question_answer(openai_key, question):
+    os.environ["OPENAI_API_KEY"] = openai_key
+
+    text = ""
+
+    for filename in os.listdir('static/upload'):
+        extension = filename.split('.')[-1]
+        if extension == 'txt':
+            with open('static/upload/'+filename) as f:
+                text += f.read()
+            text += "=====================\n\n"
+            text = CharacterTextSplitter().split_text(text)
+            pages = [Document(page_content=t) for t in text]
+
+
+        elif extension == 'pdf':
+            loader = PyPDFLoader('static/upload/'+filename)
+            pages = loader.load_and_split()
+
+    model = OpenAI(temperature=0, model_name="gpt-3.5-turbo-16k",)
+    answer = ""
+    for page in pages:
+        text = page.page_content
+        in_text = prompt_template.format(context=text, query=question)
+        res_text = model(in_text)
+        if res_text != "I don't know.":
+            answer += res_text + ' '
+    if len(answer) == 0:
+        answer = "I don't know."
+    else:
+        answer = model(f'Summarize the following text: {answer}')
+
+    return answer
+
+
 def summerization(openai_key):
     os.environ["OPENAI_API_KEY"] = openai_key
 
@@ -71,14 +107,20 @@ def summerization(openai_key):
             loader = PyPDFLoader('static/upload/'+filename)
             pages = loader.load_and_split()
 
-            # for each in pages:
-            #     text += each.page_content
-            # text += "=====================\n\n"
-
-    
-
     chain = load_summarize_chain(ChatOpenAI(model_name="gpt-3.5-turbo-16k", temperature=0), chain_type="map_reduce")
     res_text = chain.run(pages)
 
     return res_text
-    
+
+
+def translation(openai_key, outlanguage, res_text):
+    os.environ["OPENAI_API_KEY"] = openai_key
+    translated = openai.ChatCompletion.create(
+    model="gpt-3.5-turbo",
+    messages=[
+            {"role": "system", "content": f"You are a {outlanguage} translator."},
+            {"role": "user", "content": f"I will speak to you in any language and you will detect the language, translate it and answer in the corrected and improved version of my text, in {outlanguage}. I want you to replace my simplified A0-level words and sentences with more beautiful and elegant, upper level f{outlanguage} words and sentences. Keep the meaning same, but make them more literary. I want you to only reply the correction, the improvements and nothing else, do not write explanations. The paragrah you will translate is {res_text}."}
+        ]
+    )
+
+    return translated["choices"][0]["message"]["content"]

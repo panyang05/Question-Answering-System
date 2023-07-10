@@ -3,6 +3,39 @@
 
 <head>
     <title>Ask anything about your files</title>
+    <style>
+        h1 {
+            font-size: 24px;
+            margin-top: 0;
+        }
+
+        ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        li {
+            border: 1px solid black;
+            padding: 10px;
+        }
+
+        form {
+            width: 500px;
+            margin: 0 auto;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid black;
+        }
+
+        button {
+            width: 100px;
+            margin-top: 10px;
+        }
+    </style>
 </head>
 
 <body>
@@ -15,7 +48,7 @@
     </form>
 
     <ul>
-    {%for filename in files%}
+        {%for filename in files%}
         <li>
             {{filename}}
             <form action="/delete/" method="post" enctype="multipart/form-data">
@@ -23,7 +56,7 @@
                 <button type="submit" value="Delete"> Delete</button>
             </form>
         </li>
-    {%endfor%}
+        {%endfor%}
 
     </ul>
 
@@ -36,23 +69,23 @@
 
         <label for="question">Enter your question:</label>
         <input type="text" name="question" id="text" required>
-        
+
         <br>
         <input type="submit" value="Submit">
     </form>
 
     <h1>Summerize your files</h1>
     <form action="/summerize" method="post">
-    
+
         <label for="key">Enter your openAI key:</label>
         <input type="password" name="key" id="text" required>
         <br>
-    
+
         <input type="submit" value="Submit">
     </form>
-    
+
     {%if response%}
-        <p>response: {{response}}</p>
+    <p>response: {{response}}</p>
     {%endif%}
 </body>
 
