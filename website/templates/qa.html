@@ -2,6 +2,9 @@
 <html>
 
 <head>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css"
+        integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+
     <title>Ask anything about your files</title>
     <style>
         h1 {
@@ -39,6 +42,7 @@
 </head>
 
 <body>
+    
     <h1>Upload your file</h1>
     <form action="/upload" method="post" enctype="multipart/form-data">
         <label for="file">Choose a file to upload:</label>
@@ -59,12 +63,32 @@
         {%endfor%}
 
     </ul>
-
+    <hr>
     <h1>Ask your question</h1>
     <form action="/submit" method="post">
-
-        <label for="key">Enter your openAI key:</label>
-        <input type="password" name="key" id="text" required>
+        <div class="form-check">
+            <input class="form-check-input" type="radio" name="option" id="flexRadioDefault2" value="short" required>
+            <label class="form-check-label" for="flexRadioDefault2">
+                Short text mode
+            </label>
+        </div>
+        <div class="form-check">
+            <input class="form-check-input" type="radio" name="option" id="flexRadioDefault1" value="long">
+            <label class="form-check-label" for="flexRadioDefault1">
+                Long text mode
+            </label>
+        </div>
+        <br>
+        <div>
+        <label class="form-check-label" for="lang_select">
+            Please select the output language
+        </label>
+        <select class="selectpicker" data-width="fit" name="lang" id="lang_select">
+            <option data-content='<span class="flag-icon flag-icon-us"></span> English' value="English">English</option>
+            <option data-content='<span class="flag-icon flag-icon-mx"></span> Español' value="Spanish">Español</option>
+            <option data-content='<span class="flag-icon flag-icon-mx"></span> Chinese' value="Chinese">中文</option>
+        </select>
+        </div>
         <br>
 
         <label for="question">Enter your question:</label>
@@ -73,20 +97,51 @@
         <br>
         <input type="submit" value="Submit">
     </form>
-
+    <hr>
     <h1>Summerize your files</h1>
-    <form action="/summerize" method="post">
-
-        <label for="key">Enter your openAI key:</label>
-        <input type="password" name="key" id="text" required>
+    <form action="/summarize" method="post">
+        <label class="form-check-label" for="file_select">
+            Please select the file you want to summarize
+        </label>
+        <select class="selectpicker" data-width="fit" name="file" id="file_select" required>
+            <option disabled selected value> -- select a file -- </option>
+            {%for filename in files%}
+            <option value={{filename}}>{{filename}}</option>
+            {%endfor%}
+        </select>
         <br>
-
+        <label class="form-check-label" for="lang_select">
+            Please select the output language
+        </label>
+        <select class="selectpicker" data-width="fit" name="lang" id="lang_select2">
+            <option data-content='<span class="flag-icon flag-icon-us"></span> English' value="English">English</option>
+            <option data-content='<span class="flag-icon flag-icon-mx"></span> Español' value="Spanish">Español</option>
+            <option data-content='<span class="flag-icon flag-icon-mx"></span> Chinese' value="Chinese">中文</option>
+        </select>
+        <br>
         <input type="submit" value="Submit">
     </form>
 
     {%if response%}
     <p>response: {{response}}</p>
     {%endif%}
+
+
+
+    <br><br>
+    <form action="/logout" method="post">
+        <input type="submit" value="Logout">
+    </form>
+
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+        integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js"
+        integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js"
+        integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+        crossorigin="anonymous"></script>
 </body>
 
 </html>

@@ -90,22 +90,21 @@ def long_question_answer(openai_key, question):
     return answer
 
 
-def summerization(openai_key):
+def summarization(openai_key, filename):
     os.environ["OPENAI_API_KEY"] = openai_key
 
     text = ""
 
-    for filename in os.listdir('static/upload'):
-        extension = filename.split('.')[-1]
-        if extension == 'txt':
-            with open('static/upload/'+filename) as f:
-                text += f.read()
-            text += "=====================\n\n"
-            text = CharacterTextSplitter().split_text(text)
-            pages = [Document(page_content=t) for t in text]
-        elif extension == 'pdf':
-            loader = PyPDFLoader('static/upload/'+filename)
-            pages = loader.load_and_split()
+    extension = filename.split('.')[-1]
+    if extension == 'txt':
+        with open('static/upload/'+filename) as f:
+            text += f.read()
+        text += "=====================\n\n"
+        text = CharacterTextSplitter().split_text(text)
+        pages = [Document(page_content=t) for t in text]
+    elif extension == 'pdf':
+        loader = PyPDFLoader('static/upload/'+filename)
+        pages = loader.load_and_split()
 
     chain = load_summarize_chain(ChatOpenAI(model_name="gpt-3.5-turbo-16k", temperature=0), chain_type="map_reduce")
     res_text = chain.run(pages)
