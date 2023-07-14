@@ -56,7 +56,7 @@
         <li>
             {{filename}}
             <form action="/delete/" method="post" enctype="multipart/form-data">
-                <input type="hidden" name="filename" value={{filename}}>
+                <input type="hidden" name="filename" value="{{filename}}">
                 <button type="submit" value="Delete"> Delete</button>
             </form>
         </li>
@@ -66,7 +66,7 @@
     <hr>
     <h1>Ask your question</h1>
     <form action="/submit" method="post">
-        <div class="form-check">
+        <!-- <div class="form-check">
             <input class="form-check-input" type="radio" name="option" id="flexRadioDefault2" value="short" required>
             <label class="form-check-label" for="flexRadioDefault2">
                 Short text mode
@@ -78,7 +78,7 @@
                 Long text mode
             </label>
         </div>
-        <br>
+        <br> -->
         <div>
         <label class="form-check-label" for="lang_select">
             Please select the output language
@@ -106,7 +106,7 @@
         <select class="selectpicker" data-width="fit" name="file" id="file_select" required>
             <option disabled selected value> -- select a file -- </option>
             {%for filename in files%}
-            <option value={{filename}}>{{filename}}</option>
+            <option value="{{filename}}">{{filename}}</option>
             {%endfor%}
         </select>
         <br>

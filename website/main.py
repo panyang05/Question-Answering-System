@@ -3,7 +3,7 @@ from flask import Flask, render_template, request, session, redirect
 import flask
 from utils import get_base_url
 import os
-from qa import question_answer, summarization, long_question_answer, translation
+from qa import summarization, long_question_answer, translation
 # setup the webserver
 # port may need to be changed if there are multiple flask servers running on same server
 port = 12345
@@ -75,20 +75,22 @@ def delete():
 def submit():
     if 'api_key' not in session:
         return redirect('/login')
-    if 'question' not in request.form or 'option' not in request.form or 'lang' not in request.form:
+    if 'question' not in request.form or 'lang' not in request.form:
         flask.abort(403)
     
 
     key = session['api_key']
     question = request.form['question']
-    choice = request.form['option']
+    # choice = request.form['option']
     lang = request.form['lang']
-    if choice == 'short':
-        res_text = question_answer(key, question)
-        if lang != 'English':
-            res_text = translation(key, request.form['lang'], res_text)
-    else:
-        res_text = long_question_answer(key, question)
+    # if choice == 'short':
+    #     res_text = question_answer(key, question)
+    #     if lang != 'English':
+    #         res_text = translation(key, request.form['lang'], res_text)
+    # else:
+    res_text = long_question_answer(key, question)
+    if lang != 'English':
+        res_text = translation(key, request.form['lang'], res_text)
     uploaded_files = []
     for filename in os.listdir('static/upload'):
         uploaded_files.append(filename)

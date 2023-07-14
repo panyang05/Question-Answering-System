@@ -15,6 +15,9 @@ from langchain.llms import OpenAI
 
 from langchain import PromptTemplate
 from langchain.chains.summarize import load_summarize_chain
+from langchain.document_loaders import UnstructuredHTMLLoader
+from langchain.document_loaders.csv_loader import CSVLoader
+
 
 template = """Answer the question based on the context below. You are NOT allowed to use any outside information. If the question cannot be answered using the information provided, you must answer with "I don't know".
 
@@ -29,37 +32,37 @@ prompt_template = PromptTemplate(
     template=template
 )
 
-def question_answer(openai_key, question):
-    os.environ["OPENAI_API_KEY"] = openai_key
+# def question_answer(openai_key, question):
+#     os.environ["OPENAI_API_KEY"] = openai_key
 
-    text = ""
+#     text = ""
 
-    for filename in os.listdir('static/upload'):
-        extension = filename.split('.')[-1]
-        if extension == 'txt':
-            with open('static/upload/'+filename) as f:
-                text += f.read()
-            text += "=====================\n\n"
-        elif extension == 'pdf':
-            loader = PyPDFLoader('static/upload/'+filename)
-            pages = loader.load_and_split()
+#     for filename in os.listdir('static/upload'):
+#         extension = filename.split('.')[-1]
+#         if extension == 'txt':
+#             with open('static/upload/'+filename) as f:
+#                 text += f.read()
+#             text += "=====================\n\n"
+#         elif extension == 'pdf':
+#             loader = PyPDFLoader('static/upload/'+filename)
+#             pages = loader.load_and_split()
 
-            for each in pages:
-                text += each.page_content
-            text += "=====================\n\n"
+#             for each in pages:
+#                 text += each.page_content
+#             text += "=====================\n\n"
 
-    model = OpenAI(temperature=0, model_name="gpt-3.5-turbo-16k",)
-    in_text = prompt_template.format(context=text, query=question)
-    res_text = model(in_text)
+#     model = OpenAI(temperature=0, model_name="gpt-3.5-turbo-16k",)
+#     in_text = prompt_template.format(context=text, query=question)
+#     res_text = model(in_text)
 
-    return res_text
+#     return res_text
 
 
 def long_question_answer(openai_key, question):
     os.environ["OPENAI_API_KEY"] = openai_key
 
     text = ""
-
+    pages = []
     for filename in os.listdir('static/upload'):
         extension = filename.split('.')[-1]
         if extension == 'txt':
@@ -67,12 +70,25 @@ def long_question_answer(openai_key, question):
                 text += f.read()
             text += "=====================\n\n"
             text = CharacterTextSplitter().split_text(text)
-            pages = [Document(page_content=t) for t in text]
+            pages = pages + [Document(page_content=t) for t in text]
 
 
         elif extension == 'pdf':
             loader = PyPDFLoader('static/upload/'+filename)
-            pages = loader.load_and_split()
+            pages = pages + loader.load_and_split()
+        elif extension == 'html':
+            loader = UnstructuredHTMLLoader('static/upload/'+filename)
+            pages = pages + loader.load_and_split()
+            
+        elif extension == 'csv':
+            loader = CSVLoader(file_path='static/upload/'+filename)
+            pages = pages + loader.load_and_split()
+        else:
+            with open('static/upload/'+filename) as f:
+                text += f.read()
+            text += "=====================\n\n"
+            text = CharacterTextSplitter().split_text(text)
+            pages = pages + [Document(page_content=t) for t in text]
 
     model = OpenAI(temperature=0, model_name="gpt-3.5-turbo-16k",)
     answer = ""
@@ -102,10 +118,24 @@ def summarization(openai_key, filename):
         text += "=====================\n\n"
         text = CharacterTextSplitter().split_text(text)
         pages = [Document(page_content=t) for t in text]
+
+
     elif extension == 'pdf':
         loader = PyPDFLoader('static/upload/'+filename)
         pages = loader.load_and_split()
-
+    elif extension == 'html':
+        loader = UnstructuredHTMLLoader('static/upload/'+filename)
+        pages = loader.load_and_split()
+        
+    elif extension == 'csv':
+        loader = CSVLoader(file_path='static/upload/'+filename)
+        pages = loader.load_and_split()
+    else:
+        with open('static/upload/'+filename) as f:
+            text += f.read()
+        text += "=====================\n\n"
+        text = CharacterTextSplitter().split_text(text)
+        pages = [Document(page_content=t) for t in text]
     chain = load_summarize_chain(ChatOpenAI(model_name="gpt-3.5-turbo-16k", temperature=0), chain_type="map_reduce")
     res_text = chain.run(pages)
 
