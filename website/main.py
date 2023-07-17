@@ -32,6 +32,8 @@ def content():
 def qa():
     if 'api_key' not in session:
         return redirect('/login')
+    if not os.path.isdir('static/upload'):
+        os.makedirs('static/upload')
     uploaded_files = []
     for filename in os.listdir('static/upload'):
         uploaded_files.append(filename)
@@ -42,6 +44,8 @@ def qa():
 def upload():
     if not request.files['file']:
         flask.abort(403)
+    if not os.path.isdir('static/upload'):
+        os.makedirs('static/upload')
     file = request.files['file']
     file_name = file.filename
     temp_path = 'static/upload/' + file_name

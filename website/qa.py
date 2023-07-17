@@ -17,6 +17,7 @@ from langchain import PromptTemplate
 from langchain.chains.summarize import load_summarize_chain
 from langchain.document_loaders import UnstructuredHTMLLoader
 from langchain.document_loaders.csv_loader import CSVLoader
+from langchain.document_loaders import UnstructuredMarkdownLoader
 
 
 template = """Answer the question based on the context below. You are NOT allowed to use any outside information. If the question cannot be answered using the information provided, you must answer with "I don't know".
@@ -65,13 +66,9 @@ def long_question_answer(openai_key, question):
     pages = []
     for filename in os.listdir('static/upload'):
         extension = filename.split('.')[-1]
-        if extension == 'txt':
-            with open('static/upload/'+filename) as f:
-                text += f.read()
-            text += "=====================\n\n"
-            text = CharacterTextSplitter().split_text(text)
-            pages = pages + [Document(page_content=t) for t in text]
-
+        if extension == 'md':
+            loader = UnstructuredMarkdownLoader('static/upload/'+filename)
+            pages = loader.load_and_split()
 
         elif extension == 'pdf':
             loader = PyPDFLoader('static/upload/'+filename)
@@ -112,12 +109,9 @@ def summarization(openai_key, filename):
     text = ""
 
     extension = filename.split('.')[-1]
-    if extension == 'txt':
-        with open('static/upload/'+filename) as f:
-            text += f.read()
-        text += "=====================\n\n"
-        text = CharacterTextSplitter().split_text(text)
-        pages = [Document(page_content=t) for t in text]
+    if extension == 'md':
+        loader = UnstructuredMarkdownLoader('static/upload/'+filename)
+        pages = loader.load_and_split()
 
 
     elif extension == 'pdf':
