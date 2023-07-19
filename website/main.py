@@ -4,6 +4,8 @@ import flask
 from utils import get_base_url
 import os
 from qa import summarization, long_question_answer, translation
+import openai
+import shutil
 # setup the webserver
 # port may need to be changed if there are multiple flask servers running on same server
 port = 12345
@@ -104,7 +106,7 @@ def submit():
     return render_template('qa.html', **context)
 
 @app.route('/summarize/', methods=['POST'])
-def summerize():
+def summarize():
     if 'api_key' not in session:
         return redirect('/login')
     if 'file' not in request.form or 'lang' not in request.form:
@@ -136,13 +138,30 @@ def signin():
     if 'api_key' not in request.form:
         flask.abort(403)
 
+    key = request.form['api_key']
+    openai.api_key = key
+    def is_api_key_valid():
+        try:
+            response = openai.Completion.create(
+                engine="davinci",
+                prompt="This is a test.",
+                max_tokens=5
+            )
+            return True
+        except:
+            return False
+    if not is_api_key_valid():
+        return render_template('re-login.html')
     session['api_key'] = request.form['api_key']
     return redirect('/qa')
+
 @app.route('/logout', methods=['POST'])
 def logout():
-    if 'api_key' not in session:
-        flask.abort(403)
+    # if 'api_key' not in session:
+    #     flask.abort(403)
 
+    if os.path.isdir('static/upload'):
+        shutil.rmtree('static/upload')
     session.clear()
     return redirect('/')
 
