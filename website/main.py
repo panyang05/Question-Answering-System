@@ -74,7 +74,7 @@ def delete():
     uploaded_files = []
     for filename in os.listdir('static/upload'):
         uploaded_files.append(filename)
-    context = {"files": uploaded_files}
+    context = {"files": uploaded_files, 'question': ""}
     return render_template('qa.html', **context)
 
 @app.route('/submit/', methods=['POST'])
@@ -102,7 +102,7 @@ def submit():
         uploaded_files.append(filename)
     if len(uploaded_files) == 0:
         flask.abort(400)
-    context = {"files": uploaded_files, 'response': res_text}
+    context = {"files": uploaded_files, 'response': res_text, 'question':question}
     return render_template('qa.html', **context)
 
 @app.route('/summarize/', methods=['POST'])

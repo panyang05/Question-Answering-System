@@ -62,7 +62,8 @@ prompt_template = PromptTemplate(
 def long_question_answer(openai_key, question):
     try:
         os.environ["OPENAI_API_KEY"] = openai_key
-
+        bard = Bard(token="YwhCST9bVl4ap4RL5_gQ-GTotXrYhf7_04CpVx2IlyFyr2b2dWXoa9GEems1Vhor1VHjdA.")
+        evaluator = Bard(token="YwhCST9bVl4ap4RL5_gQ-GTotXrYhf7_04CpVx2IlyFyr2b2dWXoa9GEems1Vhor1VHjdA.")
         text = ""
         pages = []
         for filename in os.listdir('static/upload'):
@@ -89,17 +90,27 @@ def long_question_answer(openai_key, question):
                 pages = pages + [Document(page_content=t) for t in text]
 
         model = OpenAI(temperature=0, model_name="gpt-3.5-turbo-16k",)
-        answer = ""
+        answer1 = ""
+        answer2 = ""
         for page in pages:
             text = page.page_content
             in_text = prompt_template.format(context=text, query=question)
             res_text = model(in_text)
-            if res_text != "I don't know.":
-                answer += res_text + ' '
-        if len(answer) == 0:
+            if  "I don't know".lower() not in res_text.lower():
+                answer1 += res_text + ' '
+
+            res_text = bard.get_answer(in_text)['content']
+
+            if "I don't know".lower() not in res_text.lower():
+                answer2 += res_text + ' '
+        if len(answer1) == 0 or len(answer2) == 0:
             answer = "I don't know."
         else:
-            answer = model(f'Summarize the following text: {answer}')
+            eval = evaluator.get_answer(f'Yes or No: "{answer1}" and {answer2} have the same meaning)')['content']
+            if "yes" in eval.lower():
+                answer = model(f'Summarize the following text: {answer1 + " " + answer2}')
+            else:
+                answer = f"Both answers are possible, please check carefully: \n answer1: {answer1}, \n answer2: {answer2}"
 
         return answer
     except:
