@@ -60,8 +60,9 @@ prompt_template = PromptTemplate(
 
 
 def long_question_answer(openai_key, question):
-    try:
+    # try:
         os.environ["OPENAI_API_KEY"] = openai_key
+        embeddings = OpenAIEmbeddings()
         bard = Bard(token="YwhCST9bVl4ap4RL5_gQ-GTotXrYhf7_04CpVx2IlyFyr2b2dWXoa9GEems1Vhor1VHjdA.")
         evaluator = Bard(token="YwhCST9bVl4ap4RL5_gQ-GTotXrYhf7_04CpVx2IlyFyr2b2dWXoa9GEems1Vhor1VHjdA.")
         text = ""
@@ -70,29 +71,45 @@ def long_question_answer(openai_key, question):
             extension = filename.split('.')[-1]
             if extension == 'md':
                 loader = UnstructuredMarkdownLoader('static/upload/'+filename)
-                pages = loader.load_and_split()
+                data = loader.load()
+                db = Chroma.from_documents(data, embeddings)
+                docs = db.similarity_search(question)
+                pages = pages + [each.page_content for each in docs]
 
             elif extension == 'pdf':
                 loader = PyPDFLoader('static/upload/'+filename)
-                pages = pages + loader.load_and_split()
+                data = loader.load_and_split()
+                db = Chroma.from_documents(data, embeddings)
+                docs = db.similarity_search(question)
+                pages = pages + [each.page_content for each in docs]
             elif extension == 'html':
                 loader = UnstructuredHTMLLoader('static/upload/'+filename)
-                pages = pages + loader.load_and_split()
+                data = loader.load()
+                db = Chroma.from_documents(data, embeddings)
+                docs = db.similarity_search(question)
+                pages = pages + [each.page_content for each in docs]
                 
             elif extension == 'csv':
                 loader = CSVLoader(file_path='static/upload/'+filename)
-                pages = pages + loader.load_and_split()
+                data = loader.load_and_split()
+                db = Chroma.from_documents(data, embeddings)
+                docs = db.similarity_search(question)
+                pages = pages + [each.page_content for each in docs]
             else:
                 with open('static/upload/'+filename) as f:
                     text += f.read()
                 text += "=====================\n\n"
                 text = CharacterTextSplitter().split_text(text)
-                pages = pages + [Document(page_content=t) for t in text]
+                data =  [Document(page_content=t) for t in text]
+                db = Chroma.from_documents(data, embeddings)
+                docs = db.similarity_search(question)
+                pages = pages + [each.page_content for each in docs]
 
+        
         model = OpenAI(temperature=0, model_name="gpt-3.5-turbo-16k",)
         answer1 = ""
         answer2 = ""
-        for page in pages:
+        for page in docs:
             text = page.page_content
             in_text = prompt_template.format(context=text, query=question)
             res_text = model(in_text)
@@ -104,17 +121,19 @@ def long_question_answer(openai_key, question):
             if "I don't know".lower() not in res_text.lower():
                 answer2 += res_text + ' '
         if len(answer1) == 0 or len(answer2) == 0:
-            answer = "I don't know."
+            answer = ["I don't know."]
         else:
             eval = evaluator.get_answer(f'Yes or No: "{answer1}" and {answer2} have the same meaning)')['content']
             if "yes" in eval.lower():
-                answer = model(f'Summarize the following text: {answer1 + " " + answer2}')
+                answer = [model(f'Summarize the following text: {answer1 + " " + answer2}')]
             else:
-                answer = f"Both answers are possible, please check carefully: \n answer1: {answer1}, \n answer2: {answer2}"
+                answer = [f"Both answers are possible, please check carefully:",
+                          f"answer1: {answer1}",
+                          f"answer2: {answer2}"]
 
         return answer
-    except:
-        return "Something went wrong. Please try again!"
+    # except:
+    #     return "Something went wrong. Please try again!"
 
 
 def summarization(openai_key, filename):
