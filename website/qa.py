@@ -167,9 +167,9 @@ def summarization(openai_key, filename):
         chain = load_summarize_chain(ChatOpenAI(model_name="gpt-3.5-turbo-16k", temperature=0), chain_type="map_reduce")
         res_text = chain.run(pages)
 
-        return res_text
+        return [res_text]
     except:
-        return "Something went wrong. Please try again!"
+        return ["Something went wrong. Please try again!"]
 
 
 def translation(openai_key, outlanguage, res_text):
@@ -183,6 +183,6 @@ def translation(openai_key, outlanguage, res_text):
             ]
         )
 
-        return translated["choices"][0]["message"]["content"]
+        return [translated["choices"][0]["message"]["content"]]
     except:
-        return "Something went wrong. Please try again!"
+        return ["Something went wrong. Please try again!"]
