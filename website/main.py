@@ -3,7 +3,7 @@ from flask import Flask, render_template, request, session, redirect
 import flask
 from utils import get_base_url
 import os
-from qa import summarization, long_question_answer, translation
+from qa import summarization, long_question_answer, translation, translation_qa
 import openai
 import shutil
 # setup the webserver
@@ -96,13 +96,13 @@ def submit():
     # else:
     res_text = long_question_answer(key, question)
     if lang != 'English':
-        res_text = translation(key, request.form['lang'], res_text)
+        res_text = translation_qa(key, request.form['lang'], res_text)
     uploaded_files = []
     for filename in os.listdir('static/upload'):
         uploaded_files.append(filename)
     if len(uploaded_files) == 0:
         flask.abort(400)
-    context = {"files": uploaded_files, 'response': res_text, 'question':question}
+    context = {"files": uploaded_files, 'response': res_text, 'question':question, 'qa': True}
     return render_template('qa.html', **context)
 
 @app.route('/summarize/', methods=['POST'])
@@ -123,7 +123,7 @@ def summarize():
     uploaded_files = []
     for filename in os.listdir('static/upload'):
         uploaded_files.append(filename)
-    context = {"files": uploaded_files, 'response': res_text}
+    context = {"files": uploaded_files, 'response': res_text[0][0], 'qa':False}
     return render_template('qa.html', **context)
 
 @app.route('/login')

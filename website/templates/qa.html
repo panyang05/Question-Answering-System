@@ -68,7 +68,7 @@
 
     </ul>
     <hr>
-    <h1>Ask your question</h1>
+    <h1>Ask your question. Seperate different questions with a newline </h1>
     <form action="/submit" method="post">
         <!-- <div class="form-check">
             <input class="form-check-input" type="radio" name="option" id="flexRadioDefault2" value="short" required>
@@ -96,7 +96,8 @@
         <br>
 
         <label for="question">Enter your question:</label>
-        <input type="text" name="question" id="text" value="{{question}}" required>
+        <div></div>
+        <textarea rows="15" cols="50" type="text" name="question" id="text" value="{{question}}" required>{{question}}</textarea>
 
         <br>
         <input type="submit" value="Submit">
@@ -127,9 +128,23 @@
     </form>
 
     {%if response%}
-     {%for each in response%}
-        <p> {{each}} </p>
+    <hr>
+    {%if qa%}
+     {%for q, a in response%}
+        <div>
+            <p>Question: {{q}}</p>
+            <p>Answer:
+                {%for each in a%}
+                  <p>{{each}}</p>
+                {%endfor%}
+            </p>
+        </div>
+        <hr>
      {%endfor%}
+    
+        {%else%}
+        <p> {{response}} </p>
+        {%endif %}
     {%endif%}
 
 

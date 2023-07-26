@@ -33,107 +33,88 @@ prompt_template = PromptTemplate(
     template=template
 )
 
-# def question_answer(openai_key, question):
-#     os.environ["OPENAI_API_KEY"] = openai_key
-
-#     text = ""
-
-#     for filename in os.listdir('static/upload'):
-#         extension = filename.split('.')[-1]
-#         if extension == 'txt':
-#             with open('static/upload/'+filename) as f:
-#                 text += f.read()
-#             text += "=====================\n\n"
-#         elif extension == 'pdf':
-#             loader = PyPDFLoader('static/upload/'+filename)
-#             pages = loader.load_and_split()
-
-#             for each in pages:
-#                 text += each.page_content
-#             text += "=====================\n\n"
-
-#     model = OpenAI(temperature=0, model_name="gpt-3.5-turbo-16k",)
-#     in_text = prompt_template.format(context=text, query=question)
-#     res_text = model(in_text)
-
-#     return res_text
 
 
-def long_question_answer(openai_key, question):
-    # try:
+def long_question_answer(openai_key, questions):
+    try:
         os.environ["OPENAI_API_KEY"] = openai_key
         embeddings = OpenAIEmbeddings()
         bard = Bard(token="YwhCST9bVl4ap4RL5_gQ-GTotXrYhf7_04CpVx2IlyFyr2b2dWXoa9GEems1Vhor1VHjdA.")
         evaluator = Bard(token="YwhCST9bVl4ap4RL5_gQ-GTotXrYhf7_04CpVx2IlyFyr2b2dWXoa9GEems1Vhor1VHjdA.")
         text = ""
         pages = []
-        for filename in os.listdir('static/upload'):
-            extension = filename.split('.')[-1]
-            if extension == 'md':
-                loader = UnstructuredMarkdownLoader('static/upload/'+filename)
-                data = loader.load()
-                db = Chroma.from_documents(data, embeddings)
-                docs = db.similarity_search(question)
-                pages = pages + [each.page_content for each in docs]
+        temp = []
+        for question in questions.split("\n"):
+            for filename in os.listdir('static/upload'):
+                extension = filename.split('.')[-1]
+                if extension == 'md':
+                    loader = UnstructuredMarkdownLoader('static/upload/'+filename)
+                    data = loader.load()
+                    db = Chroma.from_documents(data, embeddings)
+                    docs = db.similarity_search(question)
+                    pages = pages + [each.page_content for each in docs]
 
-            elif extension == 'pdf':
-                loader = PyPDFLoader('static/upload/'+filename)
-                data = loader.load_and_split()
-                db = Chroma.from_documents(data, embeddings)
-                docs = db.similarity_search(question)
-                pages = pages + [each.page_content for each in docs]
-            elif extension == 'html':
-                loader = UnstructuredHTMLLoader('static/upload/'+filename)
-                data = loader.load()
-                db = Chroma.from_documents(data, embeddings)
-                docs = db.similarity_search(question)
-                pages = pages + [each.page_content for each in docs]
-                
-            elif extension == 'csv':
-                loader = CSVLoader(file_path='static/upload/'+filename)
-                data = loader.load_and_split()
-                db = Chroma.from_documents(data, embeddings)
-                docs = db.similarity_search(question)
-                pages = pages + [each.page_content for each in docs]
-            else:
-                with open('static/upload/'+filename) as f:
-                    text += f.read()
-                text += "=====================\n\n"
-                text = CharacterTextSplitter().split_text(text)
-                data =  [Document(page_content=t) for t in text]
-                db = Chroma.from_documents(data, embeddings)
-                docs = db.similarity_search(question)
-                pages = pages + [each.page_content for each in docs]
+                elif extension == 'pdf':
+                    loader = PyPDFLoader('static/upload/'+filename)
+                    data = loader.load_and_split()
+                    db = Chroma.from_documents(data, embeddings)
+                    docs = db.similarity_search(question)
+                    pages = pages + [each.page_content for each in docs]
+                elif extension == 'html':
+                    loader = UnstructuredHTMLLoader('static/upload/'+filename)
+                    data = loader.load()
+                    db = Chroma.from_documents(data, embeddings)
+                    docs = db.similarity_search(question)
+                    pages = pages + [each.page_content for each in docs]
+                    
+                elif extension == 'csv':
+                    loader = CSVLoader(file_path='static/upload/'+filename)
+                    data = loader.load_and_split()
+                    db = Chroma.from_documents(data, embeddings)
+                    docs = db.similarity_search(question)
+                    pages = pages + [each.page_content for each in docs]
+                else:
+                    with open('static/upload/'+filename) as f:
+                        text += f.read()
+                    text += "=====================\n\n"
+                    text = CharacterTextSplitter().split_text(text)
+                    data =  [Document(page_content=t) for t in text]
+                    db = Chroma.from_documents(data, embeddings)
+                    docs = db.similarity_search(question)
+                    pages = pages + [each.page_content for each in docs]
 
+            
+            model = OpenAI(temperature=0, model_name="gpt-3.5-turbo-16k",)
+            
         
-        model = OpenAI(temperature=0, model_name="gpt-3.5-turbo-16k",)
-        answer1 = ""
-        answer2 = ""
-        for page in docs:
-            text = page.page_content
-            in_text = prompt_template.format(context=text, query=question)
-            res_text = model(in_text)
-            if  "I don't know".lower() not in res_text.lower():
-                answer1 += res_text + ' '
+            answer1 = ""
+            answer2 = ""
+            for page in docs:
+                text = page.page_content
+                in_text = prompt_template.format(context=text, query=question)
+                res_text = model(in_text)
+                if  "I don't know".lower() not in res_text.lower():
+                    answer1 += res_text + ' '
 
-            res_text = bard.get_answer(in_text)['content']
+                res_text = bard.get_answer(in_text)['content']
 
-            if "I don't know".lower() not in res_text.lower():
-                answer2 += res_text + ' '
-        if len(answer1) == 0 or len(answer2) == 0:
-            answer = ["I don't know."]
-        else:
-            eval = evaluator.get_answer(f'Yes or No: "{answer1}" and {answer2} have the same meaning)')['content']
-            if "yes" in eval.lower():
-                answer = [model(f'Summarize the following text: {answer1 + " " + answer2}')]
+                if "I don't know".lower() not in res_text.lower():
+                    answer2 += res_text + ' '
+            if len(answer1) == 0 or len(answer2) == 0:
+                answer = ["I don't know."]
             else:
-                answer = [f"Both answers are possible, please check carefully:",
-                          f"answer1: {answer1}",
-                          f"answer2: {answer2}"]
-
-        return answer
-    # except:
-    #     return "Something went wrong. Please try again!"
+                eval = evaluator.get_answer(f'Yes or No: "{answer1}" and {answer2} have the same meaning)')['content']
+                if "yes" in eval.lower():
+                    answer = [model(f'Summarize the following text: {answer1 + " " + answer2}')]
+                else:
+                    answer = [f"Both answers are possible, please check carefully:",
+                            f"answer1: {answer1}",
+                            f"answer2: {answer2}"]
+            
+            temp.append((question, answer))
+        return temp
+    except:
+        return "Something went wrong. Please try again!"
 
 
 def summarization(openai_key, filename):
@@ -167,22 +148,53 @@ def summarization(openai_key, filename):
         chain = load_summarize_chain(ChatOpenAI(model_name="gpt-3.5-turbo-16k", temperature=0), chain_type="map_reduce")
         res_text = chain.run(pages)
 
-        return [res_text]
+        return [[res_text]]
     except:
-        return ["Something went wrong. Please try again!"]
+        return [["Something went wrong. Please try again!"]]
 
 
-def translation(openai_key, outlanguage, res_text):
+def translation(openai_key, outlanguage, res_texts):
     try:
         os.environ["OPENAI_API_KEY"] = openai_key
-        translated = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[
-                {"role": "system", "content": f"You are a {outlanguage} translator."},
-                {"role": "user", "content": f"I will speak to you in any language and you will detect the language, translate it and answer in the corrected and improved version of my text, in {outlanguage}. I want you to replace my simplified A0-level words and sentences with more beautiful and elegant, upper level f{outlanguage} words and sentences. Keep the meaning same, but make them more literary. I want you to only reply the correction, the improvements and nothing else, do not write explanations. The paragrah you will translate is {res_text}."}
-            ]
-        )
+        result = []
+        for i in range(len(res_texts)):
+            temp = []
+            for j in range(len(res_texts[i])):
+                res_text = res_texts[i][j]
+                translated = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                        {"role": "system", "content": f"You are a {outlanguage} translator."},
+                        {"role": "user", "content": f"I will speak to you in any language and you will detect the language, translate it and answer in the corrected and improved version of my text, in {outlanguage}. I want you to replace my simplified A0-level words and sentences with more beautiful and elegant, upper level f{outlanguage} words and sentences. Keep the meaning same, but make them more literary. I want you to only reply the correction, the improvements and nothing else, do not write explanations. The paragrah you will translate is {res_text}."}
+                    ]
+                )
+                temp.append(translated["choices"][0]["message"]["content"])
+            result.append(temp.copy())
 
-        return [translated["choices"][0]["message"]["content"]]
+        return result
     except:
-        return ["Something went wrong. Please try again!"]
+        return [["Something went wrong. Please try again!"]]
+    
+
+
+def translation_qa(openai_key, outlanguage, res_texts):
+    try:
+        os.environ["OPENAI_API_KEY"] = openai_key
+        result = []
+        for i in range(len(res_texts)):
+            temp = []
+            for j in range(len(res_texts[i][1])):
+                res_text = res_texts[i][1][j]
+                translated = openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                        {"role": "system", "content": f"You are a {outlanguage} translator."},
+                        {"role": "user", "content": f"I will speak to you in any language and you will detect the language, translate it and answer in the corrected and improved version of my text, in {outlanguage}. I want you to replace my simplified A0-level words and sentences with more beautiful and elegant, upper level f{outlanguage} words and sentences. Keep the meaning same, but make them more literary. I want you to only reply the correction, the improvements and nothing else, do not write explanations. The paragrah you will translate is {res_text}."}
+                    ]
+                )
+                temp.append(translated["choices"][0]["message"]["content"])
+            result.append((res_texts[i][0], temp.copy()))
+
+        return result
+    except:
+        return [["Something went wrong. Please try again!"]]
