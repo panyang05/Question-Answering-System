@@ -36,15 +36,17 @@ prompt_template = PromptTemplate(
 
 
 def long_question_answer(openai_key, questions):
-    try:
+    # try:
         os.environ["OPENAI_API_KEY"] = openai_key
         embeddings = OpenAIEmbeddings()
-        bard = Bard(token="YwhCST9bVl4ap4RL5_gQ-GTotXrYhf7_04CpVx2IlyFyr2b2dWXoa9GEems1Vhor1VHjdA.")
-        evaluator = Bard(token="YwhCST9bVl4ap4RL5_gQ-GTotXrYhf7_04CpVx2IlyFyr2b2dWXoa9GEems1Vhor1VHjdA.")
-        text = ""
-        pages = []
+        # bard = Bard(token="YwhCST9bVl4ap4RL5_gQ-GTotXrYhf7_04CpVx2IlyFyr2b2dWXoa9GEems1Vhor1VHjdA.")
+        # evaluator = Bard(token="YwhCST9bVl4ap4RL5_gQ-GTotXrYhf7_04CpVx2IlyFyr2b2dWXoa9GEems1Vhor1VHjdA.")
+        
+        
         temp = []
         for question in questions.split("\n"):
+            pages = []
+            text = ""
             for filename in os.listdir('static/upload'):
                 extension = filename.split('.')[-1]
                 if extension == 'md':
@@ -79,42 +81,42 @@ def long_question_answer(openai_key, questions):
                     text += "=====================\n\n"
                     text = CharacterTextSplitter().split_text(text)
                     data =  [Document(page_content=t) for t in text]
-                    db = Chroma.from_documents(data, embeddings)
+                    db = Chroma.from_texts(text, embeddings, metadatas=[{"source": str(i)} for i in range(len(text))])
                     docs = db.similarity_search(question)
                     pages = pages + [each.page_content for each in docs]
 
             
-            model = OpenAI(temperature=0, model_name="gpt-3.5-turbo-16k",)
-            
+            model = OpenAI(temperature=0, model_name="gpt-4")
+            # chain = load_qa_with_sources_chain(model, chain_type='map_reduce')
         
             answer1 = ""
-            answer2 = ""
-            for page in docs:
-                text = page.page_content
+            # openai_res = chain({"input_documents": docs, "question": question}, return_only_outputs=True)
+            # answer2 = openai_res['output_text']
+
+            for page in pages:
+                text = page
                 in_text = prompt_template.format(context=text, query=question)
                 res_text = model(in_text)
-                if  "I don't know".lower() not in res_text.lower():
+                if  "not provide information".lower() not in res_text.lower():
                     answer1 += res_text + ' '
-
-                res_text = bard.get_answer(in_text)['content']
-
-                if "I don't know".lower() not in res_text.lower():
-                    answer2 += res_text + ' '
-            if len(answer1) == 0 or len(answer2) == 0:
+            if len(answer1) == 0:
                 answer = ["I don't know."]
             else:
-                eval = evaluator.get_answer(f'Yes or No: "{answer1}" and {answer2} have the same meaning)')['content']
-                if "yes" in eval.lower():
-                    answer = [model(f'Summarize the following text: {answer1 + " " + answer2}')]
-                else:
-                    answer = [f"Both answers are possible, please check carefully:",
-                            f"answer1: {answer1}",
-                            f"answer2: {answer2}"]
+                answer = [model(f'Summarize the following text: {answer1}')]
+            # else:
+            #     eval = model(f'Yes or No: "{answer1}" and {answer2} have the same meaning)')
+            #     if "yes" in eval.lower():
+            #         answer = [model(f'Summarize the following text: {answer1 + " " + answer2}')]
+                # else:
+                #     answer = [f"Both answers are possible, please check carefully:",
+                #             f"answer1: {answer1}",
+                #             f"answer2: {answer2}"]
             
             temp.append((question, answer))
+        # print(temp)
         return temp
-    except:
-        return "Something went wrong. Please try again!"
+    # except:
+    #     return [["Something went wrong. Please try again!", "Something went wrong. Please try again!"]]
 
 
 def summarization(openai_key, filename):
