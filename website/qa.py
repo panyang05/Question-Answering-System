@@ -18,7 +18,8 @@ from langchain.chains.summarize import load_summarize_chain
 from langchain.document_loaders import UnstructuredHTMLLoader
 from langchain.document_loaders.csv_loader import CSVLoader
 from langchain.document_loaders import UnstructuredMarkdownLoader
-
+from langchain.document_loaders import TextLoader
+import time
 
 template = """Answer the question based on the context below. You are NOT allowed to use any outside information. If the question cannot be answered using the information provided, you must answer with "I don't know".
 
@@ -38,57 +39,69 @@ prompt_template = PromptTemplate(
 def long_question_answer(openai_key, questions):
     # try:
         os.environ["OPENAI_API_KEY"] = openai_key
+        openai.api_key = openai_key
         embeddings = OpenAIEmbeddings()
         # bard = Bard(token="YwhCST9bVl4ap4RL5_gQ-GTotXrYhf7_04CpVx2IlyFyr2b2dWXoa9GEems1Vhor1VHjdA.")
         # evaluator = Bard(token="YwhCST9bVl4ap4RL5_gQ-GTotXrYhf7_04CpVx2IlyFyr2b2dWXoa9GEems1Vhor1VHjdA.")
         
-        
         temp = []
         for question in questions.split("\n"):
-            pages = []
-            text = ""
+            all_pages = []
+            all_docs = []
             for filename in os.listdir('static/upload'):
                 extension = filename.split('.')[-1]
                 if extension == 'md':
                     loader = UnstructuredMarkdownLoader('static/upload/'+filename)
-                    data = loader.load()
-                    db = Chroma.from_documents(data, embeddings)
-                    docs = db.similarity_search(question)
-                    pages = pages + [each.page_content for each in docs]
-
                 elif extension == 'pdf':
                     loader = PyPDFLoader('static/upload/'+filename)
-                    data = loader.load_and_split()
-                    db = Chroma.from_documents(data, embeddings)
-                    docs = db.similarity_search(question)
-                    pages = pages + [each.page_content for each in docs]
                 elif extension == 'html':
                     loader = UnstructuredHTMLLoader('static/upload/'+filename)
-                    data = loader.load()
-                    db = Chroma.from_documents(data, embeddings)
-                    docs = db.similarity_search(question)
-                    pages = pages + [each.page_content for each in docs]
-                    
                 elif extension == 'csv':
                     loader = CSVLoader(file_path='static/upload/'+filename)
-                    data = loader.load_and_split()
-                    db = Chroma.from_documents(data, embeddings)
-                    docs = db.similarity_search(question)
-                    pages = pages + [each.page_content for each in docs]
-                else:
-                    with open('static/upload/'+filename) as f:
-                        text += f.read()
-                    text += "=====================\n\n"
-                    text = CharacterTextSplitter().split_text(text)
-                    data =  [Document(page_content=t) for t in text]
-                    db = Chroma.from_texts(text, embeddings, metadatas=[{"source": str(i)} for i in range(len(text))])
-                    docs = db.similarity_search(question)
-                    pages = pages + [each.page_content for each in docs]
-
+                elif extension == 'txt':
+                    loader = TextLoader(file_path='static/upload/'+filename)
+                data = loader.load_and_split()
+                db = Chroma.from_documents(data, embeddings)
+                docs = db.similarity_search(question)
+                all_pages += [each.page_content for each in docs]
+                all_docs += docs
             
-            model = OpenAI(temperature=0, model_name="gpt-4")
-            # chain = load_qa_with_sources_chain(model, chain_type='map_reduce')
-        
+            # Get result with LangChain
+            model = ChatOpenAI(temperature=0, model_name="gpt-4")
+            chain = load_qa_with_sources_chain(llm=model, chain_type='map_reduce')
+            langchain_res = chain({"input_documents": all_docs, "question": question}, return_only_outputs=True)['output_text']
+            
+            # Get result with prompt
+            prompt = f"""Answer the question briefly given the context below as {{Context:}}. \n
+                If the answer is not available in the {{Context:}} and you are not confident about the output,
+                please say "Information not available in provided context". \n\n
+                Context: {all_pages}\n
+                Question: {question} \n
+                Answer:
+                """
+            chat_completion = openai.ChatCompletion.create(model="gpt-4", messages=[{"role": "user", "content": prompt}])
+            prompt_res = chat_completion.choices[0].message.content
+            if 'not ' in prompt_res or "not " in langchain_res or "don't " in prompt_res or "don't " in langchain_res:
+                answer = ["I don't know"]
+            else:
+            # Evaluate two answers
+                eval_prompt = f"""Compare Statement1 and Statement2 below. If Statement1 and Statement2 have the same meaning, please say 'yes'. If they have different meaning, please say 'no'
+                            Statement1: {langchain_res}\n
+                            Statement2: {prompt_res}\n
+                            Answer:
+                            """
+                eval_res = openai.ChatCompletion.create(model="gpt-4", messages=[{"role": "user", "content": eval_prompt}])
+                eval_res = eval_res.choices[0].message.content
+
+                if "yes" in eval_res.lower():
+                    answer = [langchain_res]
+                else:
+                    answer = [f"Both answers are possible, please check carefully:",
+                            f"Answer1: {langchain_res}",
+                            f"Answer2: {prompt_res}"]
+            temp.append((question, answer))
+            time.sleep(2)
+            '''
             answer1 = ""
             # openai_res = chain({"input_documents": docs, "question": question}, return_only_outputs=True)
             # answer2 = openai_res['output_text']
@@ -114,13 +127,14 @@ def long_question_answer(openai_key, questions):
             
             temp.append((question, answer))
         # print(temp)
+            '''
         return temp
     # except:
     #     return [["Something went wrong. Please try again!", "Something went wrong. Please try again!"]]
 
 
 def summarization(openai_key, filename):
-    try:
+    # try:
         os.environ["OPENAI_API_KEY"] = openai_key
 
         text = ""
@@ -151,8 +165,8 @@ def summarization(openai_key, filename):
         res_text = chain.run(pages)
 
         return [[res_text]]
-    except:
-        return [["Something went wrong. Please try again!"]]
+    # except:
+    #     return [["Something went wrong. Please try again!"]]
 
 
 def translation(openai_key, outlanguage, res_texts):
@@ -188,7 +202,7 @@ def translation_qa(openai_key, outlanguage, res_texts):
             for j in range(len(res_texts[i][1])):
                 res_text = res_texts[i][1][j]
                 translated = openai.ChatCompletion.create(
-                model="4",
+                model="gpt-4",
                 messages=[
                         {"role": "system", "content": f"You are a {outlanguage} translator."},
                         {"role": "user", "content": f"I will speak to you in any language and you will detect the language, translate it and answer in the corrected and improved version of my text, in {outlanguage}. I want you to replace my simplified A0-level words and sentences with more beautiful and elegant, upper level f{outlanguage} words and sentences. Keep the meaning same, but make them more literary. I want you to only reply the correction, the improvements and nothing else, do not write explanations. The paragrah you will translate is {res_text}."}
