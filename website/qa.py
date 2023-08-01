@@ -147,7 +147,7 @@ def summarization(openai_key, filename):
             text += "=====================\n\n"
             text = CharacterTextSplitter().split_text(text)
             pages = [Document(page_content=t) for t in text]
-        chain = load_summarize_chain(ChatOpenAI(model_name="gpt-3.5-turbo-16k", temperature=0), chain_type="map_reduce")
+        chain = load_summarize_chain(ChatOpenAI(model_name="gpt-4", temperature=0), chain_type="map_reduce")
         res_text = chain.run(pages)
 
         return [[res_text]]
@@ -164,7 +164,7 @@ def translation(openai_key, outlanguage, res_texts):
             for j in range(len(res_texts[i])):
                 res_text = res_texts[i][j]
                 translated = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4",
                 messages=[
                         {"role": "system", "content": f"You are a {outlanguage} translator."},
                         {"role": "user", "content": f"I will speak to you in any language and you will detect the language, translate it and answer in the corrected and improved version of my text, in {outlanguage}. I want you to replace my simplified A0-level words and sentences with more beautiful and elegant, upper level f{outlanguage} words and sentences. Keep the meaning same, but make them more literary. I want you to only reply the correction, the improvements and nothing else, do not write explanations. The paragrah you will translate is {res_text}."}
@@ -188,7 +188,7 @@ def translation_qa(openai_key, outlanguage, res_texts):
             for j in range(len(res_texts[i][1])):
                 res_text = res_texts[i][1][j]
                 translated = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
+                model="4",
                 messages=[
                         {"role": "system", "content": f"You are a {outlanguage} translator."},
                         {"role": "user", "content": f"I will speak to you in any language and you will detect the language, translate it and answer in the corrected and improved version of my text, in {outlanguage}. I want you to replace my simplified A0-level words and sentences with more beautiful and elegant, upper level f{outlanguage} words and sentences. Keep the meaning same, but make them more literary. I want you to only reply the correction, the improvements and nothing else, do not write explanations. The paragrah you will translate is {res_text}."}
