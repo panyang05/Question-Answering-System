@@ -12,139 +12,124 @@ from bardapi import Bard
 from langchain.document_loaders import PyPDFLoader
 import openai
 from langchain.llms import OpenAI
-
 from langchain import PromptTemplate
 from langchain.chains.summarize import load_summarize_chain
 from langchain.document_loaders import UnstructuredHTMLLoader
 from langchain.document_loaders.csv_loader import CSVLoader
 from langchain.document_loaders import UnstructuredMarkdownLoader
-from langchain.document_loaders import TextLoader
-import time
+from tqdm import tqdm
+from langchain.document_loaders import BSHTMLLoader
+
 
 template = """Answer the question based on the context below. You are NOT allowed to use any outside information. If the question cannot be answered using the information provided, you must answer with "I don't know".
-
 Context: {context}
-
 Question: {query}
-
 Answer: """
-
 prompt_template = PromptTemplate(
     input_variables=["context", "query"],
     template=template
 )
 
 
-
 def long_question_answer(openai_key, questions):
     # try:
         os.environ["OPENAI_API_KEY"] = openai_key
-        openai.api_key = openai_key
-        embeddings = OpenAIEmbeddings()
+        # embeddings = OpenAIEmbeddings()
         # bard = Bard(token="YwhCST9bVl4ap4RL5_gQ-GTotXrYhf7_04CpVx2IlyFyr2b2dWXoa9GEems1Vhor1VHjdA.")
         # evaluator = Bard(token="YwhCST9bVl4ap4RL5_gQ-GTotXrYhf7_04CpVx2IlyFyr2b2dWXoa9GEems1Vhor1VHjdA.")
-        
-        temp = []
-        for question in questions.split("\n"):
-            all_pages = []
-            all_docs = []
-            for filename in os.listdir('static/upload'):
-                extension = filename.split('.')[-1]
-                if extension == 'md':
-                    loader = UnstructuredMarkdownLoader('static/upload/'+filename)
-                elif extension == 'pdf':
-                    loader = PyPDFLoader('static/upload/'+filename)
-                elif extension == 'html':
-                    loader = UnstructuredHTMLLoader('static/upload/'+filename)
-                elif extension == 'csv':
-                    loader = CSVLoader(file_path='static/upload/'+filename)
-                elif extension == 'txt':
-                    loader = TextLoader(file_path='static/upload/'+filename)
-                data = loader.load_and_split()
-                db = Chroma.from_documents(data, embeddings)
-                docs = db.similarity_search(question)
-                all_pages += [each.page_content for each in docs]
-                all_docs += docs
-            
-            # Get result with LangChain
-            model = ChatOpenAI(temperature=0, model_name="gpt-4")
-            chain = load_qa_with_sources_chain(llm=model, chain_type='map_reduce')
-            langchain_res = chain({"input_documents": all_docs, "question": question}, return_only_outputs=True)['output_text']
-            
-            # Get result with prompt
-            prompt = f"""Answer the question briefly given the context below as {{Context:}}. \n
-                If the answer is not available in the {{Context:}} and you are not confident about the output,
-                please say "Information not available in provided context". \n\n
-                Context: {all_pages}\n
-                Question: {question} \n
-                Answer:
-                """
-            chat_completion = openai.ChatCompletion.create(model="gpt-4", messages=[{"role": "user", "content": prompt}])
-            prompt_res = chat_completion.choices[0].message.content
-            if 'not ' in prompt_res or "not " in langchain_res or "don't " in prompt_res or "don't " in langchain_res:
-                answer = ["I don't know"]
-            else:
-            # Evaluate two answers
-                eval_prompt = f"""Compare Statement1 and Statement2 below. If Statement1 and Statement2 have the same meaning, please say 'yes'. If they have different meaning, please say 'no'
-                            Statement1: {langchain_res}\n
-                            Statement2: {prompt_res}\n
-                            Answer:
-                            """
-                eval_res = openai.ChatCompletion.create(model="gpt-4", messages=[{"role": "user", "content": eval_prompt}])
-                eval_res = eval_res.choices[0].message.content
 
-                if "yes" in eval_res.lower():
-                    answer = [langchain_res]
-                else:
-                    answer = [f"Both answers are possible, please check carefully:",
-                            f"Answer1: {langchain_res}",
-                            f"Answer2: {prompt_res}"]
-            temp.append((question, answer))
-            time.sleep(2)
-            '''
+
+        temp = []
+        
+        pages = []
+        text = ""
+        for filename in tqdm(os.listdir('static/upload')):
+            extension = filename.split('.')[-1]
+            if extension == 'md':  
+                loader = UnstructuredMarkdownLoader('static/upload/'+filename)
+                data = loader.load()
+                # db = Chroma.from_documents(data, embeddings)
+                # docs = db.similarity_search(question)
+                pages = pages + [each.page_content for each in data]
+            elif extension == 'pdf':
+                loader = PyPDFLoader('static/upload/'+filename)
+                data = loader.load_and_split()
+                # db = Chroma.from_documents(data, embeddings)
+                # docs = db.similarity_search(question)
+                pages = pages + [each.page_content for each in data]
+            elif extension == 'html':
+                loader = BSHTMLLoader('static/upload/'+filename)
+                data = loader.load_and_split()
+                # db = Chroma.from_documents(data, embeddings)
+                # docs = db.similarity_search(question)
+                pages = pages + [each.page_content for each in data]
+                
+            elif extension == 'csv':
+                loader = CSVLoader(file_path='static/upload/'+filename)
+                data = loader.load_and_split()
+                # db = Chroma.from_documents(data, embeddings)
+                # docs = db.similarity_search(question)
+                pages = pages + [each.page_content for each in data]
+            else:
+                with open('static/upload/'+filename) as f:
+                    text += f.read()
+                text += "=====================\n\n"
+                text = CharacterTextSplitter().split_text(text)
+                data =  [Document(page_content=t) for t in text]
+                # db = Chroma.from_texts(text, embeddings, metadatas=[{"source": str(i)} for i in range(len(text))])
+                # docs = db.similarity_search(question)
+                pages = pages + [each.page_content for each in data]
+
+        for question in tqdm(questions.split("\n")):
+            model = OpenAI(temperature=0, model_name="gpt-4")
+
             answer1 = ""
             # openai_res = chain({"input_documents": docs, "question": question}, return_only_outputs=True)
-            # answer2 = openai_res['output_text']
+            # answer2 = ""
 
-            for page in pages:
+            for page in tqdm(pages):
                 text = page
-                in_text = prompt_template.format(context=text, query=question)
+                in_text = prompt_template.format(context=page, query=question)
                 res_text = model(in_text)
-                if  "not provide information".lower() not in res_text.lower():
+                if  "I don't know".lower() not in res_text.lower() and 'the text does not provide information' not in res_text.lower() and 'the context does not provide information' not in res_text.lower():
                     answer1 += res_text + ' '
+
+                # res_text = bard.get_answer(in_text)['content']
+                # if 'error' in res_text:
+                #     answer2 = 'error'
+                # elif  "I don't know".lower() not in res_text.lower():
+                #     answer2 += res_text + ' '
+            print(answer1)
             if len(answer1) == 0:
                 answer = ["I don't know."]
             else:
                 answer = [model(f'Summarize the following text: {answer1}')]
             # else:
+            #     answer1 = model(f'Summarize the following text: {answer1}')
+            #     answer2 = model(f'Summarize the following text: {answer2}')
             #     eval = model(f'Yes or No: "{answer1}" and {answer2} have the same meaning)')
             #     if "yes" in eval.lower():
-            #         answer = [model(f'Summarize the following text: {answer1 + " " + answer2}')]
-                # else:
-                #     answer = [f"Both answers are possible, please check carefully:",
-                #             f"answer1: {answer1}",
-                #             f"answer2: {answer2}"]
-            
+            #         answer = [answer1]
+            #     else:
+            #         answer = [f"Both answers are possible, please check carefully:",
+            #                 f"answer1: {answer1}",
+            #                 f"answer2: {answer2}"]
+
             temp.append((question, answer))
         # print(temp)
-            '''
         return temp
     # except:
     #     return [["Something went wrong. Please try again!", "Something went wrong. Please try again!"]]
 
 
 def summarization(openai_key, filename):
-    # try:
+    try:
         os.environ["OPENAI_API_KEY"] = openai_key
-
         text = ""
-
         extension = filename.split('.')[-1]
         if extension == 'md':
             loader = UnstructuredMarkdownLoader('static/upload/'+filename)
             pages = loader.load_and_split()
-
-
         elif extension == 'pdf':
             loader = PyPDFLoader('static/upload/'+filename)
             pages = loader.load_and_split()
@@ -163,12 +148,9 @@ def summarization(openai_key, filename):
             pages = [Document(page_content=t) for t in text]
         chain = load_summarize_chain(ChatOpenAI(model_name="gpt-4", temperature=0), chain_type="map_reduce")
         res_text = chain.run(pages)
-
         return [[res_text]]
-    # except:
-    #     return [["Something went wrong. Please try again!"]]
-
-
+    except:
+        return [["Something went wrong. Please try again!"]]
 def translation(openai_key, outlanguage, res_texts):
     try:
         os.environ["OPENAI_API_KEY"] = openai_key
@@ -186,13 +168,10 @@ def translation(openai_key, outlanguage, res_texts):
                 )
                 temp.append(translated["choices"][0]["message"]["content"])
             result.append(temp.copy())
-
         return result
     except:
         return [["Something went wrong. Please try again!"]]
     
-
-
 def translation_qa(openai_key, outlanguage, res_texts):
     try:
         os.environ["OPENAI_API_KEY"] = openai_key
@@ -202,7 +181,7 @@ def translation_qa(openai_key, outlanguage, res_texts):
             for j in range(len(res_texts[i][1])):
                 res_text = res_texts[i][1][j]
                 translated = openai.ChatCompletion.create(
-                model="gpt-4",
+                model="gpt-3.5-turbo",
                 messages=[
                         {"role": "system", "content": f"You are a {outlanguage} translator."},
                         {"role": "user", "content": f"I will speak to you in any language and you will detect the language, translate it and answer in the corrected and improved version of my text, in {outlanguage}. I want you to replace my simplified A0-level words and sentences with more beautiful and elegant, upper level f{outlanguage} words and sentences. Keep the meaning same, but make them more literary. I want you to only reply the correction, the improvements and nothing else, do not write explanations. The paragrah you will translate is {res_text}."}
@@ -210,7 +189,6 @@ def translation_qa(openai_key, outlanguage, res_texts):
                 )
                 temp.append(translated["choices"][0]["message"]["content"])
             result.append((res_texts[i][0], temp.copy()))
-
         return result
     except:
         return [["Something went wrong. Please try again!"]]
