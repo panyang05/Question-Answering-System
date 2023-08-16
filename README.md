@@ -8,10 +8,17 @@ The bot reduces hallucination by comparing two answers given by LangChain and Op
 1. Clone this repository.  
    
    ```git clone https://github.com/panyang05/Question-Answering-System.git```
-2. Go to ```website``` directory 
+
+2. Install required dependencies. 
+   
+   ```pip install -r requirements.txt```
+
+3. Go to ```website``` directory 
    
    ```cd website```
-3. Run Flask server
+
+4. Run Flask server
    
    ```python main.py```
-4. Go to the address shown in terminal. For example, http://127.0.0.1:12345
+   
+5. Go to the address shown in terminal. For example, http://127.0.0.1:12345
