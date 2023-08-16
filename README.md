@@ -4,7 +4,7 @@ Question Answering bot is implemented with LangChain and OpenAI. The bot takes i
 ## Hallucination 
 The bot reduces hallucination by comparing two answers given by LangChain and OpenAI API. If two answers have the same meaning, the bot will provide an answer to questions. Otherwise, the bot will give both of answers to users and give users a warning about the accuracy of answers. 
 
-## Run demo 
+## Run web demo 
 1. Clone this repository.  
    
    ```git clone https://github.com/panyang05/Question-Answering-System.git```
